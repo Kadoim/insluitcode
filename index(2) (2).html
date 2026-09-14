@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="nl-BE">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Insluitcode maken</title>
+  <style>
+    :root{font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#17332e;background:#f4f8f5}*{box-sizing:border-box}body{margin:0;padding:28px 16px}main{max-width:780px;margin:auto}h1{font-size:clamp(1.6rem,4vw,2.3rem);margin:0 0 8px}p{line-height:1.5;color:#4c635c}section{background:white;border:1px solid #d8e5dd;border-radius:18px;padding:24px;margin:20px 0;box-shadow:0 5px 25px #103b2610}label{display:block;font-weight:650;margin:0 0 8px}input[type=url],input[type=text],input[type=number],textarea{font:inherit;width:100%;padding:12px;border:1px solid #a9beb2;border-radius:9px;background:white;color:#17332e}input:focus,textarea:focus{outline:3px solid #a6dcc6;border-color:#187658}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.hint{font-size:.85rem;color:#5a6c64;margin:5px 0 0}.checks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 18px;margin:14px 0}.checks label{display:flex;align-items:flex-start;gap:9px;font-weight:450;margin:0}.checks input{width:18px;height:18px;accent-color:#116747;flex:none;margin:2px 0 0}button{font:inherit;font-weight:700;background:#116747;border:0;color:white;border-radius:9px;padding:11px 16px;cursor:pointer}button:hover{background:#0b5137}button:disabled{opacity:.55;cursor:not-allowed}.row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}textarea{resize:vertical;min-height:135px;font-family:ui-monospace,Consolas,monospace;font-size:.88rem;margin-bottom:10px}.error{color:#a32621;font-weight:600;min-height:1.4em}.preview{border:1px dashed #aac4b4;border-radius:10px;min-height:180px;overflow:hidden;background:#fafcfa}.preview iframe{display:block;border:0;width:100%;height:360px}.small{font-size:.88rem}code{background:#edf4ee;padding:2px 5px;border-radius:4px}@media(max-width:550px){.grid,.checks{grid-template-columns:1fr}section{padding:18px}}
+  </style>
+</head>
+<body>
+<main>
+  <h1>Insluitcode maken</h1>
+  <p>Plak de link van een website, video of oefening. Kies hoe die op je pagina verschijnt en kopieer de code naar bijvoorbeeld Genially.</p>
+  <section>
+    <label for="url">Link die je wilt insluiten</label>
+    <input id="url" type="url" placeholder="https://voorbeeld.be/oefening" autocomplete="url">
+    <p class="hint">Gebruik de deel- of insluitlink van de bron als die beschikbaar is. Een gewone YouTube-kijklink wordt automatisch omgezet.</p>
+    <div class="grid" style="margin-top:20px">
+      <div><label for="width">Breedte</label><input id="width" type="text" value="100%" inputmode="text"><p class="hint">Bijvoorbeeld <code>100%</code> of <code>600px</code></p></div>
+      <div><label for="height">Hoogte</label><input id="height" type="text" value="600px" inputmode="text"><p class="hint">Bijvoorbeeld <code>600px</code> of <code>80vh</code></p></div>
+    </div>
+    <div style="margin-top:18px"><label for="title">Omschrijving voor toegankelijkheid</label><input id="title" type="text" value="Ingesloten oefening"></div>
+    <div class="checks">
+      <label><input id="fullscreen" type="checkbox" checked> Volledig scherm toestaan</label>
+      <label><input id="mic" type="checkbox"> Microfoon toestaan</label>
+      <label><input id="camera" type="checkbox"> Camera toestaan</label>
+      <label><input id="autoplay" type="checkbox"> Automatisch afspelen toestaan</label>
+      <label><input id="lazy" type="checkbox"> Pas laden wanneer zichtbaar</label>
+      <label><input id="transparent" type="checkbox" checked> Doorzichtige achtergrond vragen</label>
+    </div>
+    <p class="hint">Toestemming voor automatisch afspelen of transparantie garandeert niet dat de ingesloten website dit ook ondersteunt.</p>
+    <p id="error" class="error" role="alert"></p>
+  </section>
+  <section>
+    <label for="output">Insluitcode</label>
+    <textarea id="output" readonly placeholder="Je insluitcode verschijnt hier zodra je een geldige link invoert."></textarea>
+    <div class="row"><button id="copy" type="button" disabled>Kopieer insluitcode</button><span id="status" class="small" role="status"></span></div>
+    <p class="small">De code bevat een <code>iframe</code>. Plak hem in het veld voor insluitcode of HTML van je platform.</p>
+  </section>
+  <section>
+    <label>Voorbeeld</label>
+    <div id="preview" class="preview"><p style="padding:16px">Vul bovenaan een link in om een voorbeeld te zien.</p></div>
+    <p class="hint">Sommige websites blokkeren insluiten. Dan kan de code correct zijn terwijl het voorbeeld toch leeg blijft.</p>
+  </section>
+</main>
+<script>
+  const ids=['url','width','height','title','fullscreen','mic','camera','autoplay','lazy','transparent'];
+  const el=Object.fromEntries(ids.map(id=>[id,document.getElementById(id)]));
+  const output=document.getElementById('output'), preview=document.getElementById('preview');
+  const copy=document.getElementById('copy'), error=document.getElementById('error'), status=document.getElementById('status');
+  function attr(s){return s.replaceAll('&','&amp;').replaceAll('"','&quot;').replaceAll('<','&lt;').replaceAll('>','&gt;')}
+  function dimension(s){return /^(?:\d+(?:\.\d+)?)(?:px|%|vw|vh|rem|em)?$/i.test(s)?(/^\d+(?:\.\d+)?$/.test(s)?s+'px':s):null}
+  function source(raw){
+    const u=new URL(raw);if(!['https:','http:'].includes(u.protocol))throw Error('Gebruik een link die begint met https:// of http://.');
+    const host=u.hostname.toLowerCase();let id=null;
+    if(host==='youtu.be')id=u.pathname.split('/')[1];
+    else if(host==='youtube.com'||host==='www.youtube.com'||host==='m.youtube.com'){
+      if(u.pathname==='/watch')id=u.searchParams.get('v');
+      else if(/^\/(shorts|live|embed)\//.test(u.pathname))id=u.pathname.split('/')[2];
+    }
+    if(id && /^[a-zA-Z0-9_-]{11}$/.test(id))return 'https://www.youtube-nocookie.com/embed/'+id;
+    return u.href;
+  }
+  function update(){
+    status.textContent='';error.textContent='';const raw=el.url.value.trim();
+    if(!raw){output.value='';copy.disabled=true;preview.replaceChildren(Object.assign(document.createElement('p'),{textContent:'Vul bovenaan een link in om een voorbeeld te zien.'}));return}
+    try{
+      const url=source(raw),w=dimension(el.width.value.trim()),h=dimension(el.height.value.trim());
+      if(!w||!h)throw Error('Vul een geldige breedte en hoogte in, bijvoorbeeld 100% en 600px.');
+      const permissions=[el.mic.checked&&'microphone',el.camera.checked&&'camera',el.autoplay.checked&&'autoplay',el.fullscreen.checked&&'fullscreen'].filter(Boolean).join('; ');
+      const parts=['<iframe',`  src="${attr(url)}"`,`  title="${attr(el.title.value.trim()||'Ingesloten inhoud')}"`,`  width="${attr(w)}"`,`  height="${attr(h)}"`,`  style="border: 0;${el.transparent.checked?' background: transparent;':''}"`];
+      if(permissions)parts.push(`  allow="${permissions}"`);
+      if(el.fullscreen.checked)parts.push('  allowfullscreen');
+      if(el.lazy.checked)parts.push('  loading="lazy"');
+      parts.push('></iframe>');output.value=parts.join('\n');copy.disabled=false;
+      const frame=document.createElement('iframe');frame.src=url;frame.title=el.title.value.trim()||'Ingesloten inhoud';frame.style.height=h;frame.style.background=el.transparent.checked?'transparent':'white';
+      if(permissions)frame.allow=permissions;if(el.fullscreen.checked)frame.allowFullscreen=true;if(el.lazy.checked)frame.loading='lazy';
+      preview.replaceChildren(frame);
+    }catch(e){output.value='';copy.disabled=true;error.textContent=e instanceof TypeError?'Vul een volledige, geldige URL in (met https://).':e.message;preview.replaceChildren()}
+  }
+  ids.forEach(id=>el[id].addEventListener(el[id].type==='checkbox'?'change':'input',update));
+  copy.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(output.value);status.textContent='Gekopieerd!'}catch{output.select();status.textContent='Selecteer de code en kopieer met Ctrl+C.'}});
+  update();
+</script>
+</body>
+</html>
